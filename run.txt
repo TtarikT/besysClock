@@ -6,7 +6,6 @@
 #	<no> use of the page with the given number
 # file must be ordered by ascending time stamps
 10 1 S 
-10 1 R0 
 12 1 R1
 14 2 S
 16 2 R4
@@ -14,3 +13,9 @@
 20 4 R1
 22 3 S
 24 3 R2
+26 2 R4
+28 4 R7
+30 3 R1
+32 3 R2
+34 2 R1
+36 4 R3

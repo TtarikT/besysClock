@@ -11,6 +11,13 @@ frameListEntry_t *emptyFrameListTail = NULL;
 int counter = 0;
 /* filler */
 int filler = 0;
+/* initialize struct frameMemory */
+typedef struct frameMemory {
+	int id;
+	int pageid;
+	int rbit;
+} frameMemory;
+
 /* initialize clock size */
 frameMemory frameMemoryClock[MEMORYSIZE];
 
@@ -207,6 +214,7 @@ int getEmptyFrame(void)
 Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 /* Returns TRUE on success ans FALSE on any error							*/
 {
+	printFrameRbits();
 	printf("MOVING PAGE IN\n");
 	// copy of the content of the page from secondary memory to RAM not simulated
 	// update the page table: mark present, store frame number, clear statistics
@@ -261,19 +269,14 @@ Boolean updatePageEntry(unsigned pid, action_t action)
 
 	printf("pid: %i, rbit: %i\n", pid, processTable[pid].pageTable[action.page].referenced);
 	if (filler != MEMORYSIZE) {
-		frameMemoryClock[counter].id = pid;
-		frameMemoryClock[counter].pageid = action.page;
+		frameMemoryClock[filler].id = pid;
+		frameMemoryClock[filler].pageid = action.page;
 		filler++;
 	}
 
 	return TRUE; 
 }
 
-typedef struct frameMemory {
-	int id;
-	int pageid;
-	int rbit;
-} frameMemory;
 
 Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 /* ===== The page replacement algorithm								======	*/
@@ -290,18 +293,36 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 /* Returns TRUE on success and FALSE on any error							*/
 {
 	Boolean found = FALSE;		// flag to indicate success
+	Boolean frameFound = FALSE;
 	// just for readbility local copies ot the passed values are used:
 	unsigned pid = (*outPid); 
 	unsigned page = (*outPage);
 	int frame = *outFrame; 
-	
+	printf("NEW PID: %i, PAGEID: %i\n", pid, page);
 	// +++++ START OF REPLACEMENT ALGORITHM IMPLEMENTATION: GLOBAL RANDOM ++++
-	frame = rand() % MEMORYSIZE;		// chose a frame by random
+	//frame = rand() % MEMORYSIZE;		// chose a frame by random
 	// As the initial implemetation does not have data structures that allows
 	// easy retrieval of the identity of a page residing in a given frame, 
 	// now the frame ist searched for in all page tables of all running processes
 	// I.e.: Iterate through the process table and for each valid PCB check 
 	//the valid entries in its page table until the frame is found
+
+	while (!frameFound) {
+		if (counter >= MEMORYSIZE - 1) counter = 0;
+		if (processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced == 0) {
+			frame = counter;
+			frameMemoryClock[counter].id = pid;
+			frameMemoryClock[counter].pageid = page;
+			counter++;
+			frameFound = TRUE;
+
+		}
+		else {
+			processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced = 0;
+			counter++;
+		}
+	}
+
 	pid = 0; page = 0; 
 	do 
 	{
@@ -324,4 +345,12 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 		(*outFrame) = frame;
 	}
 	return found; 
+}
+
+Boolean printFrameRbits(unsigned xyz) {
+	for (int i = 0; i < filler; i++) {
+		printf("- [%i, %i] - RBIT: %i\n", frameMemoryClock[i].id, frameMemoryClock[i].pageid, processTable[frameMemoryClock[i].id].pageTable[frameMemoryClock[i].pageid].referenced);
+	}
+
+	return TRUE;
 }
