@@ -16,6 +16,12 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
+    <Text Include="processes.txt">
+      <Filter>Ressourcendateien</Filter>
+    </Text>
+    <Text Include="run.txt">
+      <Filter>Ressourcendateien</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="global.h">

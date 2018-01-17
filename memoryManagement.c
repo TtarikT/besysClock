@@ -7,6 +7,13 @@ unsigned emptyFrameCounter;		// number of empty Frames
 frameList_t emptyFrameList = NULL;
 frameListEntry_t *emptyFrameListTail = NULL;
 
+/* Global increment pointer */
+int counter = 0;
+/* filler */
+int filler = 0;
+/* initialize clock size */
+frameMemory frameMemoryClock[MEMORYSIZE];
+
 /* ------------------------------------------------------------------------ */
 /*		               Declarations of local helper functions				*/
 
@@ -200,6 +207,7 @@ int getEmptyFrame(void)
 Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 /* Returns TRUE on success ans FALSE on any error							*/
 {
+	printf("MOVING PAGE IN\n");
 	// copy of the content of the page from secondary memory to RAM not simulated
 	// update the page table: mark present, store frame number, clear statistics
 	// *** This must be extended for advences page replacement algorithms ***
@@ -212,6 +220,7 @@ Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 
 	// update the simulation accordingly !! DO NOT REMOVE !!
 	sim_UpdateMemoryMapping(pid, (action_t) { allocate, page }, frame);
+	
 	return TRUE;
 }
 
@@ -249,9 +258,22 @@ Boolean updatePageEntry(unsigned pid, action_t action)
 	processTable[pid].pageTable[action.page].referenced = TRUE; 
 	if (action.op == write)
 		processTable[pid].pageTable[action.page].modified = TRUE;
+
+	printf("pid: %i, rbit: %i\n", pid, processTable[pid].pageTable[action.page].referenced);
+	if (filler != MEMORYSIZE) {
+		frameMemoryClock[counter].id = pid;
+		frameMemoryClock[counter].pageid = action.page;
+		filler++;
+	}
+
 	return TRUE; 
 }
 
+typedef struct frameMemory {
+	int id;
+	int pageid;
+	int rbit;
+} frameMemory;
 
 Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 /* ===== The page replacement algorithm								======	*/
