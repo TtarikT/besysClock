@@ -9,8 +9,10 @@ frameListEntry_t *emptyFrameListTail = NULL;
 
 /* Global increment pointer */
 int counter = 0;
+
 /* filler */
 int filler = 0;
+
 /* initialize struct frameMemory */
 typedef struct frameMemory {
 	int id;
@@ -214,7 +216,6 @@ int getEmptyFrame(void)
 Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 /* Returns TRUE on success ans FALSE on any error							*/
 {
-	printFrameRbits();
 	printf("MOVING PAGE IN\n");
 	// copy of the content of the page from secondary memory to RAM not simulated
 	// update the page table: mark present, store frame number, clear statistics
@@ -308,7 +309,7 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 	//the valid entries in its page table until the frame is found
 
 	while (!frameFound) {
-		if (counter >= MEMORYSIZE - 1) counter = 0;
+		if (counter == MEMORYSIZE) counter = 0;
 		if (processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced == 0) {
 			frame = counter;
 			frameMemoryClock[counter].id = pid;
@@ -318,7 +319,7 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 
 		}
 		else {
-			processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced = 0;
+			processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced = FALSE;
 			counter++;
 		}
 	}
@@ -347,10 +348,9 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 	return found; 
 }
 
-Boolean printFrameRbits(unsigned xyz) {
+Boolean printFrameRbits() {
 	for (int i = 0; i < filler; i++) {
 		printf("- [%i, %i] - RBIT: %i\n", frameMemoryClock[i].id, frameMemoryClock[i].pageid, processTable[frameMemoryClock[i].id].pageTable[frameMemoryClock[i].pageid].referenced);
 	}
-
 	return TRUE;
 }

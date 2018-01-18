@@ -70,6 +70,7 @@ void logMemoryMapping(void)
 		}
 		printf("\n");
 	}
+	printFrameRbits();
 }
 
 /* ----------------------------------------------------------------- */
