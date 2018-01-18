@@ -17,9 +17,15 @@ int filler = 0;
 typedef struct frameMemory {
 	int id;
 	int pageid;
-	int rbit;
+	Boolean ended;
 } frameMemory;
 
+/* initialize struct backupMemory */
+typedef struct backupMemory {
+	int id;
+	int pageid;
+	int frame;
+} backupMemory;
 /* initialize clock size */
 frameMemory frameMemoryClock[MEMORYSIZE];
 
@@ -153,8 +159,18 @@ Boolean deAllocateProcess(unsigned pid)
 	for (unsigned i = 0; i < processTable[pid].size; i++)
 	{
 		if (pTable[i].present == TRUE)
-		{	// page is in memory, so free the allocated frame
+		{	
+			// page is in memory, so free the allocated frame
 			storeEmptyFrame(pTable[i].frame);	// add to pool of empty frames
+			// Mark that frame is free
+			for (int j = 0; j < filler; j++) {
+				if (frameMemoryClock[j].id == pid && frameMemoryClock[j].pageid == i) {
+					frameMemoryClock[j].id = 0;
+					frameMemoryClock[j].pageid = 0;
+					frameMemoryClock[j].ended = TRUE;
+					break;
+				}
+			}
 			// update the simulation accordingly !! DO NOT REMOVE !!
 			sim_UpdateMemoryMapping(pid, (action_t) { deallocate, i }, pTable[i].frame);
 		}
@@ -216,7 +232,7 @@ int getEmptyFrame(void)
 Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 /* Returns TRUE on success ans FALSE on any error							*/
 {
-	printf("MOVING PAGE IN\n");
+	printf("MOVING PAGE IN!!\n");
 	// copy of the content of the page from secondary memory to RAM not simulated
 	// update the page table: mark present, store frame number, clear statistics
 	// *** This must be extended for advences page replacement algorithms ***
@@ -227,6 +243,22 @@ Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 	processTable[pid].pageTable[page].referenced = FALSE;
 	// Statistics for advanced replacement algorithms need to be reset here also
 
+	for (int i = 0; i < filler; i++) {
+		if (frameMemoryClock[i].ended == TRUE && filler == MEMORYSIZE) {
+			frameMemoryClock[i].id = pid;
+			frameMemoryClock[i].pageid = page;
+			frameMemoryClock[i].ended = FALSE;
+			break;
+		}
+	}
+
+	printf("pid: %i, page: %i, rbit: %i\n", pid, page, processTable[pid].pageTable[page].referenced);
+	if (filler != MEMORYSIZE) {
+		frameMemoryClock[filler].id = pid;
+		frameMemoryClock[filler].pageid = page;
+		frameMemoryClock[filler].ended = FALSE;
+		filler++;
+	}
 	// update the simulation accordingly !! DO NOT REMOVE !!
 	sim_UpdateMemoryMapping(pid, (action_t) { allocate, page }, frame);
 	
@@ -264,16 +296,11 @@ Boolean updatePageEntry(unsigned pid, action_t action)
 /* Returns TRUE on success ans FALSE on any error							*/
 // *** This must be extended for advences page replacement algorithms ***
 {
+	printf("UPDATING PAGE ENTRY!\n");
 	processTable[pid].pageTable[action.page].referenced = TRUE; 
 	if (action.op == write)
 		processTable[pid].pageTable[action.page].modified = TRUE;
 
-	printf("pid: %i, rbit: %i\n", pid, processTable[pid].pageTable[action.page].referenced);
-	if (filler != MEMORYSIZE) {
-		frameMemoryClock[filler].id = pid;
-		frameMemoryClock[filler].pageid = action.page;
-		filler++;
-	}
 
 	return TRUE; 
 }
@@ -314,9 +341,9 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 			frame = counter;
 			frameMemoryClock[counter].id = pid;
 			frameMemoryClock[counter].pageid = page;
+			frameMemoryClock[counter].ended = FALSE;
 			counter++;
 			frameFound = TRUE;
-
 		}
 		else {
 			processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced = FALSE;
@@ -350,7 +377,12 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 
 Boolean printFrameRbits() {
 	for (int i = 0; i < filler; i++) {
-		printf("- [%i, %i] - RBIT: %i\n", frameMemoryClock[i].id, frameMemoryClock[i].pageid, processTable[frameMemoryClock[i].id].pageTable[frameMemoryClock[i].pageid].referenced);
+		if (frameMemoryClock[i].ended == FALSE) {
+			printf("- [%i, %i] - RBIT: %i\n", frameMemoryClock[i].id, frameMemoryClock[i].pageid, processTable[frameMemoryClock[i].id].pageTable[frameMemoryClock[i].pageid].referenced);
+		}
+		else {
+			printf("- [-, -] - RBIT: -\n");
+		}
 	}
 	return TRUE;
 }
