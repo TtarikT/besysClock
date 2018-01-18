@@ -20,7 +20,7 @@
 #define MAX_PROCESSES (unsigned)100
 
 // Size of the physical memory available to user processes in frames
-#define MEMORYSIZE 2
+#define MEMORYSIZE 4
 
 // Period of the timer. on all multiples of this value the timer ISR ist called by the simulation
 #define TIMER_INTERVAL 500000000
@@ -28,7 +28,7 @@
 // name of the file with process definitions
 #define PROCESS_FILENAME "processes.txt"
 // name of the file with the simulation run an empty file name switches to random event stimulus
-#define RUN_FILENAME "run.txt"
+#define RUN_FILENAME ""
 //#define RUN_FILENAME ""
 
 /* ----------------------------------------------------------------	*/

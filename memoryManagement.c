@@ -154,15 +154,23 @@ Boolean deAllocateProcess(unsigned pid)
 /* free the physical memory used by a process, destroy the page table		*/
 /* returns TRUE on success, FALSE on error									*/
 {
+
 	// iterate the page table and mark all currently used frames as free
 	pageTableEntry_t *pTable = processTable[pid].pageTable;
 	for (unsigned i = 0; i < processTable[pid].size; i++)
 	{
 		if (pTable[i].present == TRUE)
-		{	
+		{
 			// page is in memory, so free the allocated frame
 			storeEmptyFrame(pTable[i].frame);	// add to pool of empty frames
 			// Mark that frame is free
+
+			int x = processTable[pid].pageTable[i].frame;
+			frameMemoryClock[x].id = 0;
+			frameMemoryClock[x].pageid = 0;
+			frameMemoryClock[x].ended = TRUE;
+
+			/*
 			for (int j = 0; j < filler; j++) {
 				if (frameMemoryClock[j].id == pid && frameMemoryClock[j].pageid == i) {
 					frameMemoryClock[j].id = 0;
@@ -171,10 +179,14 @@ Boolean deAllocateProcess(unsigned pid)
 					break;
 				}
 			}
+			*/
+
 			// update the simulation accordingly !! DO NOT REMOVE !!
 			sim_UpdateMemoryMapping(pid, (action_t) { deallocate, i }, pTable[i].frame);
 		}
 	}
+
+	
 	free(processTable[pid].pageTable);	// free the memory of the page table
 	return TRUE;
 }
@@ -243,6 +255,8 @@ Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 	processTable[pid].pageTable[page].referenced = FALSE;
 	// Statistics for advanced replacement algorithms need to be reset here also
 
+	// Add new process and page to first free frame in our frameMemoryClock if physical memory isn't filled yet
+	// on first rundown
 	for (int i = 0; i < filler; i++) {
 		if (frameMemoryClock[i].ended == TRUE && filler == MEMORYSIZE) {
 			frameMemoryClock[i].id = pid;
@@ -253,6 +267,7 @@ Boolean movePageIn(unsigned pid, unsigned page, unsigned frame)
 	}
 
 	printf("pid: %i, page: %i, rbit: %i\n", pid, page, processTable[pid].pageTable[page].referenced);
+	// Add new process and page to our frameMemoryClock until physical memory is filled
 	if (filler != MEMORYSIZE) {
 		frameMemoryClock[filler].id = pid;
 		frameMemoryClock[filler].pageid = page;
@@ -321,7 +336,8 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 /* Returns TRUE on success and FALSE on any error							*/
 {
 	Boolean found = FALSE;		// flag to indicate success
-	Boolean frameFound = FALSE;
+	Boolean frameFound = FALSE; // indicates a found replacement
+
 	// just for readbility local copies ot the passed values are used:
 	unsigned pid = (*outPid); 
 	unsigned page = (*outPage);
@@ -334,11 +350,15 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 	// now the frame ist searched for in all page tables of all running processes
 	// I.e.: Iterate through the process table and for each valid PCB check 
 	//the valid entries in its page table until the frame is found
-
+	
 	while (!frameFound) {
-		if (counter == MEMORYSIZE) counter = 0;
+		if (counter == MEMORYSIZE) counter = 0;	// Reset counter to 0 if it exceeds limit
 		if (processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced == 0) {
 			frame = counter;
+			// Push old one out
+			processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced = FALSE;
+			processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].present = FALSE;
+			// Add new one to frameMemoryClock
 			frameMemoryClock[counter].id = pid;
 			frameMemoryClock[counter].pageid = page;
 			frameMemoryClock[counter].ended = FALSE;
@@ -346,7 +366,9 @@ Boolean pageReplacement(unsigned *outPid, unsigned *outPage, int *outFrame)
 			frameFound = TRUE;
 		}
 		else {
+			// Set R-Bit to 0
 			processTable[frameMemoryClock[counter].id].pageTable[frameMemoryClock[counter].pageid].referenced = FALSE;
+			// Increment
 			counter++;
 		}
 	}
